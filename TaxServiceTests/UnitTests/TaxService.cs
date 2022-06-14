@@ -2,34 +2,28 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using TaxJarService;
+using TaxServiceCodeTest.Core;
+using TaxServiceCodeTest.TaxJar;
 
-namespace TaxServiceTests.UnitTests
+namespace TaxServiceCodeTest.Tests.UnitTests
 {
     [TestClass]
     public class TaxServiceTest
     {
         [TestMethod]
-        public void ThrowsExeceptionOnNullParams()
-        {
-            Assert.ThrowsException<ArgumentNullException>(
-                () => new TaxService(null));
-        }
-
-        [TestMethod]
         public async Task CalculateTaxesForOrder()
         {
             decimal taxRate = 0.8m;
             decimal orderAmount = 100.0m;
-            var order = new TaxJarService.TaxJar.Models.TaxJarOrder() 
-            { 
+            var order = new Order()
+            {
                 OrderAmount = orderAmount
             };
 
             var taxService = new TaxService(new MockTaxCalculalator(taxRate));
 
             Assert.AreEqual(
-                await taxService.CalculateTaxesForOrderAsync(order),
+                await taxService.CalculateTaxesForOrderAsync(order, new CancellationToken()),
                 taxRate * orderAmount);
         }
 
@@ -40,7 +34,7 @@ namespace TaxServiceTests.UnitTests
             var taxService = new TaxService(new MockTaxCalculalator(taxRate));
 
             Assert.AreEqual(
-                await taxService.GetTaxRateForLocationAsync(""),
+                await taxService.GetTaxRateForLocationAsync("", new CancellationToken()),
                 taxRate);
 
         }
@@ -53,8 +47,8 @@ namespace TaxServiceTests.UnitTests
         {
             _taxRate = taxRate;
         }
-        
-        public Task<decimal> CalculateTaxesForOrderAsync(IOrder order, CancellationToken cancellationToken = default)
+
+        public Task<decimal> CalculateTaxesForOrderAsync(Order order, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(order.OrderAmount * _taxRate);
         }

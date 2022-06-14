@@ -1,24 +1,34 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+using Microsoft.Extensions.Logging;
 using System.Threading;
 using System.Threading.Tasks;
-using TaxJarService;
-using TaxJarService.TaxJar;
-using TaxJarService.TaxJar.Models;
+using TaxServiceCodeTest.TaxJar;
+using TaxServiceCodeTest.TaxJar.Models;
+using TaxServiceCodeTest.Core;
 
-namespace TaxServiceTests.UnitTests
+namespace TaxServiceCodeTest.Tests.UnitTests
 {
     [TestClass]
     public class TaxJarTaxCalculatorTest
     {
+        private TaxJarTaxCalculator CreateTaxJarCalculator(decimal taxRate)
+        {
+            var loggerFactory = LoggerFactory.Create(c => c.AddDebug());
+            var logger = loggerFactory.CreateLogger<TaxJarTaxCalculator>();
+
+            return new TaxJarTaxCalculator(
+                    new MockTaxJarClient(taxRate),
+                    new TaxJarOrderAdapter(),
+                    logger);
+        }
+        
         [TestMethod]
         public async Task CalculateTaxesForOrder()
         {
             decimal taxRate = 0.8m;
-            TaxJarTaxCalculator taxCalculator =
-                new TaxJarTaxCalculator(new MockTaxJarClient(taxRate));
+            var taxCalculator = CreateTaxJarCalculator(taxRate);
 
-            TaxJarOrder order = new TaxJarOrder()
+            Order order = new Order()
             {
                 OrderAmount = 123.12m,
                 ShippingAmount = 21.00m,
@@ -27,7 +37,7 @@ namespace TaxServiceTests.UnitTests
                 ToState = "NY"
             };
 
-            decimal taxCollected = await taxCalculator.CalculateTaxesForOrderAsync(order);
+            decimal taxCollected = await taxCalculator.CalculateTaxesForOrderAsync(order, new CancellationToken());
             Assert.AreEqual(taxCollected, order.OrderAmount * taxRate);
         }
 
@@ -35,11 +45,10 @@ namespace TaxServiceTests.UnitTests
         public async Task GetTaxRate()
         {
             decimal taxRate = 0.8m;
-            TaxJarTaxCalculator taxCalculator =
-                new TaxJarTaxCalculator(new MockTaxJarClient(taxRate));
-           
+            var taxCalculator = CreateTaxJarCalculator(taxRate);
+
             Assert.AreEqual(
-               await taxCalculator.GetTaxRateForLocationAsync("10002"), 
+               await taxCalculator.GetTaxRateForLocationAsync("10002", new CancellationToken()),
                taxRate);
         }
     }
@@ -52,7 +61,7 @@ namespace TaxServiceTests.UnitTests
             _taxRate = taxRate;
         }
 
-        public Task<OrderSalesTaxResponse> CalculateTaxesForOrderAsync(IOrder order, CancellationToken cancellationToken = default)
+        public Task<OrderSalesTaxResponse> CalculateTaxesForOrderAsync(TaxJarOrder order, CancellationToken cancellationToken)
         {
             return Task.FromResult(new OrderSalesTaxResponse()
             {
@@ -65,7 +74,7 @@ namespace TaxServiceTests.UnitTests
             });
         }
 
-        public Task<TaxRatesResponse> GetTaxRatesAsync(string zipCode, CancellationToken cancellationToken = default)
+        public Task<TaxRatesResponse> GetTaxRatesAsync(string zipCode, CancellationToken cancellationToken)
         {
             return Task.FromResult(new TaxRatesResponse()
             {

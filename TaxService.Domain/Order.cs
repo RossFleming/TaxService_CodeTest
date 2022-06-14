@@ -1,4 +1,4 @@
-﻿namespace TaxService.Domain;
+﻿namespace TaxServiceCodeTest.Core;
 
 // TODO: Validation
 // TODO: What can and can't be null?

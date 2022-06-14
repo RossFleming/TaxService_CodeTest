@@ -1,12 +1,14 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TaxJarService;
-using TaxJarService.TaxJar;
-using TaxJarService.TaxJar.Models;
+using Microsoft.Extensions.Logging;
+using TaxServiceCodeTest.Core;
+using TaxServiceCodeTest.TaxJar;
+using TaxServiceCodeTest.TaxJar.Models;
+using TaxServiceCodeTest.TaxJar.Authentication;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
-
-namespace TaxServiceTests.IntegrationTests
+namespace TaxServiceCodeTest.Tests.IntegrationTests
 {
     [TestClass]
     public class TaxServiceTest
@@ -14,22 +16,25 @@ namespace TaxServiceTests.IntegrationTests
         private TaxService CreateTaxService()
         {
             var keyProvider = new TaxJarKeyProvider();
+            var loggerFactory = LoggerFactory.Create(c => c.AddDebug());
+            var logger = loggerFactory.CreateLogger<TaxJarTaxCalculator>();
 
             return new TaxService(
                 new TaxJarTaxCalculator(
-                    new TaxJarClient(
-                        new ApiKeyAuthentication(keyProvider.GetAPIKey()))));
+                    new TaxJarClient(new ApiKeyAuthentication(keyProvider.GetAPIKey())),
+                    new TaxJarOrderAdapter(),
+                    logger));
         }
-        
+
         [TestMethod]
         public async Task GetTaxRateForValidZip()
         {
             string zipCode = "10002";
-            
+
             var taxService = CreateTaxService();
 
-            decimal taxRate = await taxService.GetTaxRateForLocationAsync(zipCode);
-            
+            decimal taxRate = await taxService.GetTaxRateForLocationAsync(zipCode, new CancellationToken());
+
             Console.WriteLine(taxRate.ToString("n5"));
             Assert.IsTrue(taxRate >= 0m);
         }
@@ -37,7 +42,7 @@ namespace TaxServiceTests.IntegrationTests
         [TestMethod]
         public async Task CalculateTaxesForOrder()
         {
-            TaxJarOrder order = new TaxJarOrder()
+            Order order = new Order()
             {
                 OrderAmount = 123.12m,
                 ShippingAmount = 21.00m,
@@ -48,11 +53,10 @@ namespace TaxServiceTests.IntegrationTests
 
             var taxService = CreateTaxService();
 
-            decimal taxesToCollect = await taxService.CalculateTaxesForOrderAsync(order);
+            decimal taxesToCollect = await taxService.CalculateTaxesForOrderAsync(order, new CancellationToken());
 
             Console.WriteLine(taxesToCollect);
             Assert.IsTrue(taxesToCollect >= 0);
         }
-               
     }
 }

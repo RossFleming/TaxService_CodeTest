@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
-namespace TaxServiceTests
+namespace TaxServiceCodeTest.Tests
 {
     internal class TaxJarKeyProvider
     {
